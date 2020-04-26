@@ -65,6 +65,9 @@ bot.on('voice', async voice => {
     voice: { mime_type: audioType },
   } = voice;
 
+  await bot.sendMessage(chatId, 'Chat por voz ainda em desenvolvimento.');
+  return;
+
   if (!is_bot) {
     try {
       const audioLink = await bot.getFileLink(audioId);
