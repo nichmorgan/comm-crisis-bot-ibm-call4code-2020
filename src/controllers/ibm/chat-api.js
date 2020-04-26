@@ -1,7 +1,11 @@
 const AssistantV2 = require('ibm-watson/assistant/v2');
 const { IamAuthenticator } = require('ibm-watson/auth');
 
-const { IBM_ASSISTANT_ID: assistantId, IBM_API_TOKEN: apikey, IBM_API_URL: url, IBM_API_VERSION: version } = process.env;
+const {
+  IBM_ASSISTANT_ID: assistantId,
+  IBM_API_TOKEN: apikey,
+  IBM_API_URL: url,
+  IBM_API_VERSION: version } = process.env;
 
 const assistant = new AssistantV2({ version, url, authenticator: new IamAuthenticator({ apikey }) });
 
