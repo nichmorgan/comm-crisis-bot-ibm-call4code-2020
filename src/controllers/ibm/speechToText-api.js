@@ -23,7 +23,7 @@ const recognize = async (audio, contentType) => {
       maxAlternatives: 1
     }
     const res = await speechToText.recognize(params);
-    return res.result;
+    return res.result.results;
   } catch (error) {
     console.error(error);
     return null;

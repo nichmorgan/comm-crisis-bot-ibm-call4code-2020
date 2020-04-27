@@ -1,5 +1,6 @@
 const fs = require('fs');
-const request = require('request');
+const tmp = require('tmp');
+const http = require('https');
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
 
@@ -62,31 +63,51 @@ bot.on('voice', async voice => {
     from: { id: chatId },
     from: { is_bot },
     voice: { file_id: audioId },
-    voice: { mime_type: audioType },
   } = voice;
+
+  const audioType = 'audio/ogg';
 
   await bot.sendMessage(chatId, 'Chat por voz ainda em desenvolvimento.');
   return;
-
   if (!is_bot) {
     try {
       const audioLink = await bot.getFileLink(audioId);
-      // const audioFilePath = `./temp/${audioLink.split('/').slice(-1).pop()}`;
-      // todo audio stream not working
-      const audioStream = request.get(audioLink);
-      const transcryptedAudio = await ibmTranscriptApi.recognize(audioStream, audioType);
 
-      const input = {
-        mesage_type: 'text',
-        text: transcryptedAudio
-      };
 
-      let { output: { generic: resp } } = await ibmChatApi.message(input);
-      resp = await ibmTranslateApi.translate(resp[0].text, 'pt');
-      await bot.sendMessage(chatId, resp);
+      const audioRequest = http.get(audioLink, async response => {
+        const tmpFile = tmp.fileSync({ postfix: '.ogg' });
+
+        let audioStream = fs.createWriteStream(tmpFile.name);
+        response.pipe(audioStream);
+        audioStream.close();
+
+        audioStream = fs.createReadStream(tmpFile.name);
+        const transcryptedAudio = await ibmTranscriptApi.recognize(audioStream, audioType);
+        audioStream.close();
+
+        if (!transcryptedAudio)
+          throw new Error('Falha na transcrição de áudio.');
+        else if (transcryptedAudio.length === 0) {
+          await bot.sendMessage(chatId, `Não foi possível entender o áudio.`);
+        }
+        else {
+          const input = {
+            mesage_type: 'text',
+            textScore: transcryptedAudio[0].alternatives[0].confidence,
+            text: transcryptedAudio[0].alternatives[0].transcript
+          };
+
+          let { output: { generic: resp } } = await ibmChatApi.message(input);
+          resp = await ibmTranslateApi.translate(resp[0].text, 'pt');
+          await bot.sendMessage(chatId, resp);
+        }
+
+        tmpFile.removeCallback();
+
+      });
 
     } catch (error) {
-      await bot.sendMessage(chatId, `Ocorreu um erro: ${error}.`);
+      await bot.sendMessage(chatId, `Ocorreu um erro: ${error}`);
     }
   }
 });
